@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"/>
+<title>Mappa Agenti Italia 2026 · Mosnel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<style>
+  :root{
+    --paper:#f4f1ea;--paper2:#ece7db;--ink:#22252b;--ink-soft:#5c5e63;
+    --wine:#6e1423;--wine-deep:#4a0d18;--ochre:#c2872c;--grey:#8d887d;--line:#ddd7c9;
+    --vh:100vh;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--paper);color:var(--ink);
+    -webkit-font-smoothing:antialiased;overflow:hidden}
+  #app{display:flex;flex-direction:column;height:100vh;height:100dvh;min-height:480px}
+  header{padding:11px 16px 10px;border-bottom:1px solid var(--line);display:flex;
+    align-items:center;justify-content:space-between;gap:12px;
+    background:linear-gradient(180deg,#f7f4ee,#f1ede4);z-index:700}
+  .brand h1{font-family:'Fraunces',Georgia,serif;font-weight:500;font-size:20px;margin:0;color:var(--wine-deep);line-height:1.1}
+  .brand .sub{font-size:11px;color:var(--ink-soft);margin-top:2px}
+  .stats{display:flex;gap:20px}
+  .stat{text-align:right}
+  .stat b{font-family:'Fraunces',serif;font-size:19px;font-weight:600;display:block;line-height:1}
+  .stat span{font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink-soft)}
+  .menubtn{display:none;align-items:center;gap:7px;border:1px solid var(--line);background:#fff;
+    color:var(--wine-deep);font-family:inherit;font-size:13px;font-weight:600;
+    padding:9px 13px;border-radius:9px;cursor:pointer}
+  .menubtn svg{width:16px;height:16px}
+  main{flex:1;display:flex;min-height:0;position:relative}
+  aside{width:300px;border-right:1px solid var(--line);display:flex;flex-direction:column;background:#f7f4ee;z-index:650}
+  .asidehead{display:none}
+  .search{padding:12px 14px 10px;border-bottom:1px solid var(--line)}
+  .search input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:9px;
+    font-size:15px;background:#fff;color:var(--ink);outline:none;font-family:inherit}
+  .search input:focus{border-color:var(--wine);box-shadow:0 0 0 3px rgba(110,20,35,.10)}
+  .listscroll{overflow-y:auto;flex:1;padding:6px 8px 24px;-webkit-overflow-scrolling:touch}
+  .reghead{font-family:'Fraunces',serif;font-size:13px;color:var(--wine-deep);font-weight:600;
+    padding:8px 8px 4px;display:flex;justify-content:space-between;border-bottom:1px solid var(--line);margin:6px 0 2px}
+  .reghead em{font-style:normal;font-size:10px;color:var(--ink-soft);font-weight:500}
+  .agent{padding:10px 9px;border-radius:8px;cursor:pointer;font-size:13.5px;display:flex;align-items:center;gap:9px}
+  .agent:active,.agent.active{background:var(--paper2)}
+  .agent .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .agent .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .agent .ft{font-size:11.5px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+  .dot.attivo{background:var(--wine)}.dot.presidiare{background:var(--ochre)}.dot.vacante{background:var(--grey)}
+  .mapwrap{flex:1;position:relative;min-width:0}
+  #map{position:absolute;inset:0;background:#a9d6f2}
+  .backdrop{display:none;position:absolute;inset:0;background:rgba(34,37,43,.4);z-index:640}
+  .legend{position:absolute;left:10px;bottom:18px;z-index:450;background:rgba(247,244,238,.94);
+    border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:10.5px;max-width:46vw}
+  .legend .row{display:flex;align-items:center;gap:6px;margin:2px 0}
+  .legend i{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+  .legend .sec{margin-top:5px;padding-top:5px;border-top:1px solid var(--line)}
+  .legend .sq{width:12px;height:10px;border-radius:3px;display:inline-block;flex:none}
+  .pin{position:relative;width:24px;height:24px}
+  .pin .b{position:absolute;inset:0;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+    border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.35)}
+  .pin.attivo .b{background:var(--wine)}.pin.presidiare .b{background:var(--ochre)}.pin.vacante .b{background:var(--grey)}
+  .reglabel{font-family:'Fraunces',serif;font-size:11px;font-weight:600;color:#2a2620;
+    text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 6px #fff;white-space:nowrap;pointer-events:none;text-align:center}
+  .leaflet-popup-content-wrapper{border-radius:12px;padding:2px}
+  .leaflet-popup-content{margin:12px 14px;font-family:'Inter',sans-serif;width:250px!important}
+  .pop .ag{font-family:'Fraunces',serif;font-weight:600;font-size:16px;color:var(--wine-deep);line-height:1.2}
+  .pop .zone{font-size:11.5px;color:var(--ink-soft);margin-top:2px}
+  .pill{display:inline-block;font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;
+    padding:2px 7px;border-radius:20px;font-weight:600;margin-top:6px}
+  .pill.attivo{background:rgba(110,20,35,.10);color:var(--wine)}
+  .pill.presidiare{background:rgba(194,135,44,.18);color:#9a6916}
+  .pill.vacante{background:#ece9e0;color:#6b675c}
+  .pop .ft{font-size:11.5px;color:var(--ink-soft);margin-top:7px}
+  .pop .ft b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .pop .note{font-size:11px;color:#6a5d4e;background:#faf7f0;border-left:3px solid var(--ochre);
+    padding:5px 8px;border-radius:4px;margin:7px 0;line-height:1.45}
+  .ct{padding:6px 0;border-top:1px solid #f0ece2}
+  .ct .cn{font-size:12.5px;font-weight:600}
+  .ct .ln{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:3px}
+  .ct a{font-size:12.5px;color:var(--wine);text-decoration:none;padding:2px 0}
+  .ct a.tel{color:var(--ink)}.ct a:active{text-decoration:underline}
+  .ct .ico{opacity:.55;margin-right:3px}
+  .contacts{margin-top:6px}
+  .toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:660;
+    background:#fbf6ec;border:1px solid var(--ochre);color:#7a5a1c;font-size:12px;
+    padding:8px 14px;border-radius:20px;box-shadow:0 4px 14px rgba(0,0,0,.12);display:none;max-width:90vw;text-align:center}
+  /* MOBILE */
+  @media(max-width:820px){
+    header{flex-wrap:nowrap}
+    .brand h1{font-size:17px}.brand .sub{display:none}
+    .stats{display:none}
+    .menubtn{display:inline-flex}
+    aside{position:absolute;top:0;bottom:0;left:0;width:86%;max-width:340px;
+      transform:translateX(-102%);transition:transform .26s ease;box-shadow:6px 0 24px rgba(0,0,0,.18)}
+    aside.open{transform:translateX(0)}
+    .asidehead{display:flex;align-items:center;justify-content:space-between;
+      padding:12px 14px;border-bottom:1px solid var(--line)}
+    .asidehead b{font-family:'Fraunces',serif;color:var(--wine-deep);font-size:16px}
+    .asidehead .x{border:none;background:none;font-size:22px;color:var(--ink-soft);cursor:pointer;line-height:1;padding:0 4px}
+    aside.open ~ .backdrop{display:block}
+    .legend{font-size:10px;left:8px;bottom:14px;padding:7px 9px}
+  }
+  @media(max-width:380px){.legend .sec{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="menubtn" id="menubtn" aria-label="Elenco agenti">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        Elenco
+      </button>
+      <div class="brand">
+        <h1>Mappa Agenti · Italia 2026</h1>
+        <div class="sub">Mosnel — regioni per copertura, puntatori per agente</div>
+      </div>
+    </div>
+    <div class="stats" id="stats"></div>
+  </header>
+  <main>
+    <aside id="aside">
+      <div class="asidehead"><b>Agenti</b><button class="x" id="closeaside" aria-label="Chiudi">&times;</button></div>
+      <div class="search"><input id="q" type="text" placeholder="Cerca agente, zona, regione…" autocomplete="off"></div>
+      <div class="listscroll" id="agentlist"></div>
+    </aside>
+    <div class="mapwrap">
+      <div id="map"></div>
+      <div class="toast" id="toast"></div>
+      <div class="legend">
+        <div class="row"><i style="background:var(--wine)"></i> Agente attivo</div>
+        <div class="row"><i style="background:var(--ochre)"></i> Da presidiare</div>
+        <div class="row"><i style="background:var(--grey)"></i> Zona vacante</div>
+        <div class="sec">
+          <div class="row"><span class="sq" style="background:rgba(110,20,35,.30)"></span> Regione presidiata</div>
+          <div class="row"><span class="sq" style="background:rgba(194,135,44,.34)"></span> Da presidiare</div>
+          <div class="row"><span class="sq" style="background:rgba(141,136,125,.28)"></span> Scoperta</div>
+        </div>
+      </div>
+    </div>
+    <div class="backdrop" id="backdrop"></div>
+  </main>
+</div>
+<script>
+const AGENTS = [{"cod": "8", "agenzia": "Borri Alessandro", "cityprov": "Bologna e provincia", "regioniRaw": "Emilia Romagna", "regioni": ["Emilia-Romagna"], "mandato": "SI", "fatturato": "73K 2025", "info": "da sentire subito perché bella zona e ha collaboratore. Sentire da solo.", "contatti": [{"nome": "Borri Alessandro", "tel": "335/5239769", "email": "borrirappresentanze@libero.it", "pec": "borrirappresentanze@cert.next-data.com"}, {"nome": "Pennica Gabriele", "tel": "333/1667187", "email": "gabriele.pennica@alice.it", "pec": ""}], "fatturatoNum": 73000, "stato": "attivo", "lat": 44.494, "lng": 11.343}, {"cod": "9", "agenzia": "Catozzi sas", "cityprov": "Savona e provincia", "regioniRaw": "Liguria", "regioni": ["Liguria"], "mandato": "SI", "fatturato": "50k 2025", "info": "Margherita figlia di guido, referente. Leggermente in flessione sul 2026 di 3k.", "contatti": [{"nome": "Catozzi Piero", "tel": "335/7256193", "email": "pierocatozzi@gmail.com", "pec": "catozzisas@pec.it"}, {"nome": "Catozzi Margherita (capo)", "tel": "333/4006359", "email": "margherita.catozzi@gmail.com", "pec": ""}], "fatturatoNum": 50000, "stato": "attivo", "lat": 44.308, "lng": 8.481}, {"cod": "", "agenzia": "Virgili rapp. di Virgili Vittorio & C. Sas", "cityprov": "Padova, Rovigo, Ferrara e province", "regioniRaw": "Emilia Romagna - Veneto", "regioni": ["Emilia-Romagna", "Veneto"], "mandato": "SI", "fatturato": "91k 2025", "info": "da sentire subito vittorio. Con big bottle viene con dei clienti. 16 POSTI PER BIG BOTTLE. Piccolo incremento su 2026", "contatti": [{"nome": "Virgili Mirko (capo)", "tel": "336/425700", "email": "virgilimirko@libero.it", "pec": "virgilirappresentanze@pecconfesercentife.it"}, {"nome": "Virgili Vittorio (figlio)", "tel": "333/1672995", "email": "virgilirappresentanze@gmail.com", "pec": ""}], "fatturatoNum": 91000, "stato": "attivo", "lat": 44.838, "lng": 11.62}, {"cod": "54", "agenzia": "Pettiti Oscar & C. snc", "cityprov": "Cuneo e provincia", "regioniRaw": "Piemonte", "regioni": ["Piemonte"], "mandato": "SI", "fatturato": "120K 2025", "info": "piccola flessione 2026", "contatti": [{"nome": "Pettiti Omar", "tel": "335/1378845", "email": "omar@vincontro.com", "pec": "pettitioscarsnc@pcert.postecert.it"}, {"nome": "Racca Valentina", "tel": "335/212668", "email": "valentina@vincontro.com", "pec": ""}, {"nome": "Chiaramello Bartolomeo", "tel": "335/1378843", "email": "bart@vincontro.com", "pec": ""}, {"nome": "Chiaramello Davide", "tel": "393/2163715", "email": "davide@vincontro.com", "pec": ""}, {"nome": "Pettiti Oscar", "tel": "335/1378844", "email": "oscar@vincontro.com", "pec": ""}], "fatturatoNum": 120000, "stato": "attivo", "lat": 44.55, "lng": 7.726}, {"cod": "57", "agenzia": "Vannini Rappresentanze", "cityprov": "Firenze Pistoia Prato e provincia", "regioniRaw": "Toscana", "regioni": ["Toscana"], "mandato": "SI", "fatturato": "65k 2025", "info": "in caduta libera. Cotto e seduto, collaboratore gabriele fa prato e pistoia. Edera distribuzione fa tutta la toscana, da indagare. Lavora anche con filarmonica con fulonari. Sarebbe da cambiare ma no alternative su firenze. Eno florence wine excellence 20-21 sett. da sentire.", "contatti": [{"nome": "Vannini Andrea", "tel": "335/399250", "email": "vanninirappresentanze@gmail.com", "pec": "vannini.andrea@pec.it"}, {"nome": "Gigni Gabriele", "tel": "335/8416776", "email": "gabriele.gigni@gmail.com", "pec": ""}, {"nome": "Bassi Marco", "tel": "333/9753993", "email": "", "pec": ""}], "fatturatoNum": 65000, "stato": "presidiare", "lat": 43.77, "lng": 11.255}, {"cod": "69", "agenzia": "Cingolani", "cityprov": "Macerata Ancona e Province", "regioniRaw": "Marche", "regioni": ["Marche"], "mandato": "", "fatturato": "", "info": "", "contatti": [{"nome": "Cingolani Alessio", "tel": "338/8354374", "email": "alessiocingolani66@gmail.com", "pec": "alessiocingolani@pec.it"}], "fatturatoNum": null, "stato": "attivo", "lat": 43.3, "lng": 13.453}, {"cod": "187", "agenzia": "Celati", "cityprov": "Siena e provincia", "regioniRaw": "Toscana", "regioni": ["Toscana"], "mandato": "SI", "fatturato": "36k 2025", "info": "focus su mezze bottiglie. Da sentire per affiacamento", "contatti": [{"nome": "Celati Bruno", "tel": "335/6508472", "email": "brunocelati@gmail.com", "pec": "brunocelati@pec.it"}, {"nome": "Prosperi Mattia", "tel": "328/6813456", "email": "mattiaprosperi994@gmail.com", "pec": ""}], "fatturatoNum": 36000, "stato": "attivo", "lat": 43.318, "lng": 11.33}, {"cod": "127", "agenzia": "Unmondodivino Sas di Altieri Luca & C.", "cityprov": "Venezia e provincia", "regioniRaw": "Veneto", "regioni": ["Veneto"], "mandato": "SI", "fatturato": "54k 2025", "info": "ha in mano bella rist. venezia. Sta perdendo qualcosa, è da sentire entrambi. Invitati big bottle 10pax", "contatti": [{"nome": "Altieri Luca (ref.)", "tel": "347/3394800", "email": "info@unmondodivino.it luca.altieri@gmail.com", "pec": "unmondodivino@mailcertificata.it"}, {"nome": "Pescarolo Michele (coll.)", "tel": "340/3637467", "email": "agenziapescarolo@gmail.com", "pec": ""}], "fatturatoNum": 54000, "stato": "attivo", "lat": 45.438, "lng": 12.327}, {"cod": "155", "agenzia": "L'Elisir Sas di Alessandrini Alberto & C.", "cityprov": "Pesaro, Urbino e provincia", "regioniRaw": "Marche", "regioni": ["Marche"], "mandato": "SI", "fatturato": "30K 2025", "info": "da sentire e vedere con attenzion. Stanno lavorando bene sul 2026. inviti per big bottle 6pax", "contatti": [{"nome": "Alberto Alessandrini", "tel": "348/4085015", "email": "alberto@lelisirvini.com", "pec": "lelisirvini@pec.it"}, {"nome": "Piccini Stefano", "tel": "348/8992220", "email": "stefano@lelisirvini.com", "pec": ""}], "fatturatoNum": 30000, "stato": "attivo", "lat": 43.91, "lng": 12.913}, {"cod": "222", "agenzia": "Lebewine Srl Semplificata", "cityprov": "Bolzano e provincia", "regioniRaw": "Trentino Alto Adige", "regioni": ["Trentino-Alto Adige"], "mandato": "SI", "fatturato": "45k 2025", "info": "siamo su una loro piattaforma tramite prezzof. Lavorano molto bene. Da sentire. 2026 in netta crescita +50%. Big bottle 8 pax", "contatti": [{"nome": "Lercher Gebhard", "tel": "349/6220609", "email": "lebewine@gmail.com", "pec": "lebewine@legalmail.it"}, {"nome": "Brunner Benjamin", "tel": "340/5349107", "email": "", "pec": ""}], "fatturatoNum": 45000, "stato": "attivo", "lat": 46.498, "lng": 11.354}, {"cod": "157", "agenzia": "Montagni Daniela", "cityprov": "Livorno e provincia", "regioniRaw": "Toscana", "regioni": ["Toscana"], "mandato": "SI", "fatturato": "36K 2025", "info": "Buon lavoro. Big bottle 6pax. Sentire se interessa rifare pisa che le era stata tolta.", "contatti": [{"nome": "Montagni Daniela", "tel": "347/6902888", "email": "montagnidaniela@virgilio.it", "pec": "montagnidaniela@pec.it"}], "fatturatoNum": 36000, "stato": "attivo", "lat": 43.551, "lng": 10.308}, {"cod": "161", "agenzia": "Nozza Michele", "cityprov": "Bergamo e provincia", "regioniRaw": "Lombardia", "regioni": ["Lombardia"], "mandato": "SI", "fatturato": "74K 2025", "info": "preciso, impostato, timoroso. Perde pochino sul 2026, da stimolare.", "contatti": [{"nome": "Nozza Michele", "tel": "328/0382657", "email": "michelenozza@icloud.com", "pec": "michelenozza2010@pec.it"}], "fatturatoNum": 74000, "stato": "attivo", "lat": 45.695, "lng": 9.67}, {"cod": "162", "agenzia": "Albano Francesco", "cityprov": "Lecce e provincia", "regioniRaw": "Puglia", "regioni": ["Puglia"], "mandato": "SI", "fatturato": "40k 2025", "info": "Da andare a trovare subito", "contatti": [{"nome": "Albano Francesco (capo)", "tel": "347/1212697", "email": "francescoalbano@cantele.it", "pec": "albano.francesco@pec.it"}, {"nome": "Albano Enza", "tel": "327/4532205", "email": "enza.albano11@gmail.com ordini.albano@gmail.com", "pec": ""}], "fatturatoNum": 40000, "stato": "attivo", "lat": 40.352, "lng": 18.174}, {"cod": "168", "agenzia": "Apollinari Filippo", "cityprov": "Ravenna, Rimini, Forlì Cesena e Prov", "regioniRaw": "Emilia Romagna", "regioni": ["Emilia-Romagna"], "mandato": "SI", "fatturato": "125k 2025", "info": "Da sentire subito, si aspetta fine anno", "contatti": [{"nome": "Raggini Manuel", "tel": "338/6324981", "email": "manuelraggini@libero.it", "pec": "filippoapollinari@sicurezzapostale.it"}, {"nome": "Tavicca Daniele", "tel": "392/9908344", "email": "daniele.tavicca@gmail.com", "pec": ""}, {"nome": "Nicolini Matteo", "tel": "3335092258", "email": "m.nicolini81@gmail.com", "pec": ""}, {"nome": "Apollinari Filippo (capo)", "tel": "328/9533715", "email": "filippoapollinari@gmail.com", "pec": ""}], "fatturatoNum": 125000, "stato": "attivo", "lat": 44.2, "lng": 12.395}, {"cod": "163", "agenzia": "Di.Vin.A.Sas di A. Perrella e C.", "cityprov": "Napoli e provincia", "regioniRaw": "Campania", "regioni": ["Campania"], "mandato": "SI", "fatturato": "36K 2025", "info": "Crollo netto da 24 a 25.  da seguire e sentire bene perché c'è alto potenziale.", "contatti": [{"nome": "Monica perrella", "tel": "335/1238876", "email": "divinaoffice1@gmail.com", "pec": "divina1@legalmail.it"}, {"nome": "Angelo Perrella", "tel": "3356671433", "email": "", "pec": ""}, {"nome": "Gianluca Pane", "tel": "329/0965075", "email": "gianluca.pane@libero.it", "pec": ""}], "fatturatoNum": 36000, "stato": "attivo", "lat": 40.853, "lng": 14.27}, {"cod": "233", "agenzia": "Avvina Snc di Pedersini Matteo e Bertazzoli Fabio", "cityprov": "Brescia e provincia", "regioniRaw": "Lombardia", "regioni": ["Lombardia"], "mandato": "SI", "fatturato": "374K 2025", "info": "primi 4 mesi 114k", "contatti": [{"nome": "Mugelli Manfredi", "tel": "335/7266192", "email": "", "pec": "avvinasnc@unapec.it"}, {"nome": "Bertazzoli Fabio", "tel": "327/3722132", "email": "fabiobertazzoli@icloud.com", "pec": ""}, {"nome": "Pedersini Marco", "tel": "393/8349036", "email": "", "pec": ""}, {"nome": "Pedersini Matteo", "tel": "328/3666528", "email": "matteo.pede@hotmail.it avvinasnc@gmail.com", "pec": ""}], "fatturatoNum": 374000, "stato": "attivo", "lat": 45.46, "lng": 10.22}, {"cod": "170", "agenzia": "Prandi Pietro", "cityprov": "Reggio Emilia, Modena e provincia", "regioniRaw": "Emilia Romagna", "regioni": ["Emilia-Romagna"], "mandato": "SI", "fatturato": "53K 2025", "info": "aveva perso nel 2025, ma oggi partito bene. Va seguito e da sentire. Big bottle 20 pax", "contatti": [{"nome": "Prandi Pietro", "tel": "347/7267144", "email": "pietro.prandi@gmail.com", "pec": "pietro.prandi@pec.it"}], "fatturatoNum": 53000, "stato": "attivo", "lat": 44.698, "lng": 10.631}, {"cod": "173", "agenzia": "Di Cino Angelo", "cityprov": "Valtellina", "regioniRaw": "Lombardia", "regioni": ["Lombardia"], "mandato": "SI", "fatturato": "", "info": "da cambiare", "contatti": [{"nome": "Di Cino Angelo", "tel": "380/5276716", "email": "dicino.a@gmail.com", "pec": "dicino@legalmail.it"}], "fatturatoNum": null, "stato": "presidiare", "lat": 46.17, "lng": 9.872}, {"cod": "174", "agenzia": "Quartarolo Gianmario", "cityprov": "Cosenza e provincia", "regioniRaw": "Calabria", "regioni": ["Calabria"], "mandato": "NO", "fatturato": "1,2k 2025", "info": "solo anticipati, quindi si lamenta. Ha feudi, sentire come muoversi. Mai stato in azienda.", "contatti": [{"nome": "Quartarolo Gianmario", "tel": "338/8149005", "email": "gianmarioquartarolo@tiscali.it", "pec": "gianmarioquartarolo@pec.it"}], "fatturatoNum": 1200, "stato": "presidiare", "lat": 39.812, "lng": 16.201}, {"cod": "177", "agenzia": "Greco Luca", "cityprov": "Grosseto e provincia", "regioniRaw": "Toscana", "regioni": ["Toscana"], "mandato": "SI", "fatturato": "", "info": "DA SALUTARE. 6K scorso anno.", "contatti": [{"nome": "Greco Luca", "tel": "347/0550365", "email": "luca.greco11@virgilio.it", "pec": "grecoluca1987@legalmail.it"}], "fatturatoNum": null, "stato": "attivo", "lat": 42.76, "lng": 11.113}, {"cod": "181", "agenzia": "Methodos Italia", "cityprov": "Verbania Novara e provincia", "regioniRaw": "Piemonte/Lombardia", "regioni": ["Piemonte", "Lombardia"], "mandato": "SI", "fatturato": "50k 2025", "info": "Grande specialista champagne. Sta perdendo qualcosina. Big bottle 16 pax", "contatti": [{"nome": "Zanetta Simona", "tel": "348/8804244", "email": "info@methodositalia.com", "pec": "methodositalia@pec.it"}], "fatturatoNum": 50000, "stato": "attivo", "lat": 45.699, "lng": 8.461}, {"cod": "183", "agenzia": "Gaglianone Alberto", "cityprov": "Imperia e provincia", "regioniRaw": "Liguria", "regioni": ["Liguria"], "mandato": "SI", "fatturato": "6K 2025", "info": "DA SALUTARE", "contatti": [{"nome": "Ramella Alessandro (collaboratore)", "tel": "", "email": "lelerame@gmail.com", "pec": "albertogaglianone@pec.it"}, {"nome": "Gaglianone Alberto", "tel": "349/1001125", "email": "albertogaglianone@alice.it", "pec": ""}], "fatturatoNum": 6000, "stato": "attivo", "lat": 43.886, "lng": 8.027}, {"cod": "188", "agenzia": "Enogenova Srls Ciardelli Fabrizio", "cityprov": "Genova", "regioniRaw": "Liguria", "regioni": ["Liguria"], "mandato": "SI", "fatturato": "30K 2025", "info": "Perso 24 su 25, 26 partito bene. Da sentire. Bigo bottle 6 pax. Amico zanetta", "contatti": [{"nome": "Ciardelli Fabrizio", "tel": "347/3551578", "email": "genovacentro1@gmail.com; enogenovasrls@gmail.com", "pec": "enogenovasrls@pec.it"}], "fatturatoNum": 30000, "stato": "attivo", "lat": 44.405, "lng": 8.946}, {"cod": "189", "agenzia": "Bellon Alessio", "cityprov": "Aosta, Biella, Vercelli e prov.", "regioniRaw": "Piemonte", "regioni": ["Piemonte"], "mandato": "SI", "fatturato": "20K 2025", "info": "da seguire meglio perché ha potenziale. Chiedere se è stato in azienda. Contattare da solo", "contatti": [{"nome": "Bellon Alessio", "tel": "346/4794040", "email": "info@alessiobellon.it", "pec": "alessio.bellon@pec.it"}], "fatturatoNum": 20000, "stato": "attivo", "lat": 45.566, "lng": 8.054}, {"cod": "207", "agenzia": "Bianchi Manuel", "cityprov": "Frosinone Latina e provincia", "regioniRaw": "Lazio", "regioni": ["Lazio"], "mandato": "SI", "fatturato": "18k 2025", "info": "zona sfigata ma da svegliare un po'. Il figlio è giovane. Sentire per franciacorta in villa, manifestazione", "contatti": [{"nome": "Bianchi Maurizio", "tel": "348/3410802", "email": "bianchimaurizio61@gmail.com", "pec": "bianchimanuel@pec.it"}, {"nome": "Bianchi Manuel (capo)", "tel": "320/6705132", "email": "", "pec": ""}], "fatturatoNum": 18000, "stato": "attivo", "lat": 41.718, "lng": 13.615}, {"cod": "190", "agenzia": "Tavani Stefano", "cityprov": "Viterbo, Rieti, Terni e provincia", "regioniRaw": "Lazio", "regioni": ["Lazio"], "mandato": "SI", "fatturato": "11K 2025", "info": "Da sentire, fa area manager per un gorssista, capire cosa vuole fare. 26k nel 23, poi tracollo. Nel 26 partito meglio", "contatti": [{"nome": "Tavani Stefano", "tel": "392/2413915", "email": "stefano.tavani76@gmail.com", "pec": "tavani.stefano@pec.it"}], "fatturatoNum": 11000, "stato": "attivo", "lat": 42.42, "lng": 12.107}, {"cod": "192", "agenzia": "Magnani Daniele", "cityprov": "Lucca e provincia", "regioniRaw": "Toscana", "regioni": ["Toscana"], "mandato": "SI", "fatturato": "25k 2025", "info": "Sgonfio, età avanzata, fa minimo indispensabile. 25 male rispetto a 24. perde anche su 26.", "contatti": [{"nome": "Magnani Daniele", "tel": "335/5305110", "email": "danielemagnani959@gmail.com", "pec": "danielemagnani959@pec.it"}], "fatturatoNum": 25000, "stato": "attivo", "lat": 43.844, "lng": 10.502}, {"cod": "224", "agenzia": "M.W.T.V Mariani Wines di Niccolò Mariani", "cityprov": "Cremona e provincia", "regioniRaw": "Lombardia", "regioni": ["Lombardia"], "mandato": "NO", "fatturato": "51K 2025", "info": "qualcosina perde sul 25. ribalta e non lavora bene. No mandato perché ha bellavista. Da sentire. CHIARIRE MANDATO", "contatti": [{"nome": "Mariani Roberto", "tel": "335/7086243", "email": "niccolo.mariani2@gmail.com", "pec": "niccolo.mariani2@pec.it"}, {"nome": "Degl'Innocenti Marco", "tel": "347/4621048", "email": "", "pec": ""}, {"nome": "Mariani Niccolò (capo)", "tel": "334/9620016", "email": "", "pec": ""}], "fatturatoNum": 51000, "stato": "presidiare", "lat": 45.362, "lng": 9.686}, {"cod": "195", "agenzia": "Martinelli Gianluca", "cityprov": "Salerno e provicia", "regioniRaw": "Campania", "regioni": ["Campania"], "mandato": "SI", "fatturato": "41K 2025", "info": "Allineato con 2025. da trovare con giulio", "contatti": [{"nome": "Martinelli Gianluca", "tel": "320/0224749", "email": "gianluca_martinelli@virgilio.it", "pec": "martinelligianluca@pec.it"}], "fatturatoNum": 41000, "stato": "attivo", "lat": 40.682, "lng": 14.768}, {"cod": "196", "agenzia": "Laiolo Giuseppe Mario", "cityprov": "Asti Alessandria e provincia", "regioniRaw": "Piemonte", "regioni": ["Piemonte"], "mandato": "NO", "fatturato": "0", "info": "", "contatti": [{"nome": "Laiolo Giuseppe Mario", "tel": "335/7790547", "email": "giuseppelaiolo062@gmail.com", "pec": "giuseppelaiolo@pec.it"}], "fatturatoNum": 0, "stato": "presidiare", "lat": 44.773, "lng": 8.354}, {"cod": "198", "agenzia": "Baloon sas", "cityprov": "Ascoli Piceno, Fermo e provincia", "regioniRaw": "Marche", "regioni": ["Marche"], "mandato": "SI", "fatturato": "12K 2025", "info": "da sentire perché i numeri sono bassi. Mai stato in azienda", "contatti": [{"nome": "Serafini Giuseppe", "tel": "333/1289160", "email": "info@baloonsas.it", "pec": "baloon@pec.it"}], "fatturatoNum": 12000, "stato": "attivo", "lat": 43.18, "lng": 13.802}, {"cod": "201", "agenzia": "Di Cocco Maurizio", "cityprov": "Pisa e provincia", "regioniRaw": "Toscana", "regioni": ["Toscana"], "mandato": "SI", "fatturato": "11K 2025", "info": "DA SALUTARE e passare a livorno.", "contatti": [{"nome": "Di Cocco Maurizio", "tel": "348/2712545", "email": "mauriziodicocco04@gmail.com", "pec": "mauriziodicocco@pec.it"}], "fatturatoNum": 11000, "stato": "attivo", "lat": 43.716, "lng": 10.402}, {"cod": "204", "agenzia": "Enobox Sas di Landi e Santamaria", "cityprov": "Como Lecco e provincia", "regioniRaw": "Lombardia", "regioni": ["Lombardia"], "mandato": "SI", "fatturato": "99 K 2025", "info": "In crescita 2026. Big bottle 30 pax.", "contatti": [{"nome": "Landi Isidoro", "tel": "348/4082204", "email": "isidoro.landi@gmail.com", "pec": "enoboxsas@legalmail.it"}, {"nome": "Santamaria Alessandro", "tel": "349/4977580", "email": "ale.santamaria995@gmail.com", "pec": ""}, {"nome": "Santamaria Marco", "tel": "348/4105539", "email": "enoboxcomo@gmail.com", "pec": ""}], "fatturatoNum": 99000, "stato": "attivo", "lat": 45.808, "lng": 9.085}, {"cod": "206", "agenzia": "Quaranta Michelangelo", "cityprov": "Bari, Bat, Brindisi, Taranto e prov.", "regioniRaw": "Puglia", "regioni": ["Puglia"], "mandato": "SI", "fatturato": "21K 2025", "info": "In crescita sul 2026. non è inserita bene.", "contatti": [{"nome": "Quaranta Michelangelo", "tel": "330/222714", "email": "quarantamichelangelo@yahoo.it", "pec": "michelequaranta@pec.it"}], "fatturatoNum": 21000, "stato": "attivo", "lat": 41.125, "lng": 16.866}, {"cod": "208", "agenzia": "Rodomisto Umberto Emilio", "cityprov": "Catanzaro, Crotone, Vibo Valentia e prov.", "regioniRaw": "Calabria", "regioni": ["Calabria"], "mandato": "SI", "fatturato": "13k 2025", "info": "da sentire, chiedere se è stato in azienda e riprendere contatti.", "contatti": [{"nome": "Rodomisto Umberto Emilio", "tel": "349/5670276", "email": "amministrazione@rodomisto.it", "pec": "umberto.rodomisto@pec.it"}], "fatturatoNum": 13000, "stato": "attivo", "lat": 38.909, "lng": 16.588}, {"cod": "212", "agenzia": "Nicolini Cesare", "cityprov": "Massa Carrara, Spezia provinve", "regioniRaw": "Toscana", "regioni": ["Toscana"], "mandato": "SI", "fatturato": "23K 2025", "info": "26 fa metà su 25. tanto massa e poco spezia. Big bottle 6 pax.", "contatti": [{"nome": "Nicolini Cesare", "tel": "335/7062046", "email": "cesarenicolini@gmail.com", "pec": "cesarenicolini@legalmail.it"}], "fatturatoNum": 23000, "stato": "attivo", "lat": 44.037, "lng": 10.142}, {"cod": "213", "agenzia": "Dallara Luca", "cityprov": "Parma, Piacenza e prov.", "regioniRaw": "Emilia Romagna", "regioni": ["Emilia-Romagna"], "mandato": "SI", "fatturato": "31K 2025", "info": "Metà rispetto al 2025, fa perdere soldi. Da valutare per lasciare a casa se troviamo soluzione. Solo baretti no ristornati belli. Coruzzi invotato a big bottle 6 pax. Da salutare", "contatti": [{"nome": "Coruzzi Mattia (collab)", "tel": "389/0683336", "email": "mattiacoruzzi.rappresentanze@gmail.com", "pec": "lucadallararappresentanze@pec.it"}, {"nome": "Dallara Luca", "tel": "337/595060", "email": "info@brbrappresentanze.it", "pec": ""}], "fatturatoNum": 31000, "stato": "attivo", "lat": 44.801, "lng": 10.328}, {"cod": "", "agenzia": "Lazzari Alessandro", "cityprov": "Cadrezzate con Osmate (VA)", "regioniRaw": "Lombardia", "regioni": ["Lombardia"], "mandato": "SI", "fatturato": "19k 2025", "info": "Invitare in azienda. Buon potenziale. Perde un pochino sul 2025. big bottle 4 pax. Da sentire", "contatti": [{"nome": "Lazzari Alessandro", "tel": "335/7270315", "email": "lazzarialessandro@yahoo.com", "pec": "lazzari.alessandro@pec.it"}], "fatturatoNum": 19000, "stato": "attivo", "lat": 45.793, "lng": 8.654}, {"cod": "", "agenzia": "Murtula Paolo", "cityprov": "Sassari e provincia", "regioniRaw": "Sardegna", "regioni": ["Sardegna"], "mandato": "NO", "fatturato": "7K 2025", "info": "2026 no ordini. Da salutare e trovare alternativa", "contatti": [{"nome": "Murtula Paolo", "tel": "348/3668721", "email": "murtula@hotmail.it", "pec": "murtulapaolo@pec.it"}], "fatturatoNum": 7000, "stato": "presidiare", "lat": 40.726, "lng": 8.559}, {"cod": "", "agenzia": "Ciavalini Srl", "cityprov": "Chieti e Provincia", "regioniRaw": "Abruzzo", "regioni": ["Abruzzo"], "mandato": "NO", "fatturato": "22,3K 2025", "info": "Distributore/grossista. Sta facendo un buon lavoro. Da seguire e sentire. Big bottle 6 pax", "contatti": [{"nome": "Ciavalini Srl", "tel": "348/0053303", "email": "info@ciavalini.it", "pec": "pec.ciavalini@interfreepec.it"}], "fatturatoNum": 22300, "stato": "presidiare", "lat": 42.351, "lng": 14.168}, {"cod": "", "agenzia": "SpecialWine di Tobaldo Samuele", "cityprov": "Cagliari e provincia", "regioniRaw": "Sardegna", "regioni": ["Sardegna"], "mandato": "NO", "fatturato": "2K 2025", "info": "Arenato. Non ha senso tenerlo.", "contatti": [{"nome": "SpecialWine di Tobaldo Samuele", "tel": "349/1001860", "email": "sam.tobaldo@gmail.com", "pec": "sam.tobaldo80@pec.it"}], "fatturatoNum": 2000, "stato": "presidiare", "lat": 39.217, "lng": 9.113}, {"cod": "", "agenzia": "VACANT", "cityprov": "Treviso e provincia", "regioniRaw": "Veneto", "regioni": ["Veneto"], "mandato": "", "fatturato": "", "info": "VACANT DACERCARE", "contatti": [], "fatturatoNum": null, "stato": "vacante", "lat": 45.667, "lng": 12.245}, {"cod": "", "agenzia": "Orunesu Peano Lucia", "cityprov": "Nuoro oristano Gallura", "regioniRaw": "Sardegna", "regioni": ["Sardegna"], "mandato": "NO", "fatturato": "17K 2025", "info": "Lui e la moglie. Inserito. Lavora bene", "contatti": [{"nome": "Orunesu Peano Lucia", "tel": "347/6011412", "email": "nicolapeano@gmail.com", "pec": "orunesu.lucia@pec.it"}], "fatturatoNum": 17000, "stato": "presidiare", "lat": 40.923, "lng": 9.498}, {"cod": "", "agenzia": "Le divin scorda", "cityprov": "Torino e provincia", "regioniRaw": "Piemonte", "regioni": ["Piemonte"], "mandato": "SI", "fatturato": "63K 2025", "info": "Bel fatturato. 2026 in linea sul 25 (18,3 vs 18)", "contatti": [{"nome": "Scorda Serena", "tel": "339/4440710", "email": "", "pec": "lebewine@legalmail.it"}, {"nome": "Scorda Samantha", "tel": "338/3532766", "email": "", "pec": "lebewine@legalmail.it"}], "fatturatoNum": 63000, "stato": "attivo", "lat": 45.04, "lng": 7.77}, {"cod": "", "agenzia": "VACANT", "cityprov": "Arezzo", "regioniRaw": "Toscana", "regioni": ["Toscana"], "mandato": "", "fatturato": "", "info": "VACANT DACERCARE", "contatti": [{"nome": "Pugliese Massimo", "tel": "338/4757674", "email": "massimopugliese1@gmail.com", "pec": "agenziamassimopugliese@pec.it"}], "fatturatoNum": null, "stato": "vacante", "lat": 43.463, "lng": 11.879}, {"cod": "", "agenzia": "Recchioni Srl (Grosssista)", "cityprov": "Umbria", "regioniRaw": "Umbria", "regioni": ["Umbria"], "mandato": "NO", "fatturato": "6,4K", "info": "Simone Tordini. È grossista, fa poca roba. Da trovare agente.", "contatti": [{"nome": "Recchioni Srl", "tel": "347/5193966", "email": "simone.tordini@recchioni.com", "pec": "recchionisrl@pec.it"}], "fatturatoNum": 6400, "stato": "presidiare", "lat": 43.111, "lng": 12.389}, {"cod": "", "agenzia": "Vava Srl", "cityprov": "Milano e provincia", "regioniRaw": "Lombardia", "regioni": ["Lombardia"], "mandato": "SI", "fatturato": "280K 2025", "info": "", "contatti": [{"nome": "Vava Srl", "tel": "", "email": "info@vava.it", "pec": "vavassori@pec.it"}, {"nome": "Vavassori Marco", "tel": "335/5952018", "email": "marco.vavassori@vava.it", "pec": ""}, {"nome": "Franzoni Simone", "tel": "346/3156387", "email": "simone.franzoni@vava.it", "pec": ""}, {"nome": "Danti Thomas W.", "tel": "340/9267429", "email": "thomas.w.danti@vava.it", "pec": ""}, {"nome": "Bocchio Giacomo", "tel": "333/8503614", "email": "giacomo.bocchio@vava.it", "pec": ""}, {"nome": "Chiodi Alessio", "tel": "348/0478838", "email": "alessio.chiodi@vava.it", "pec": ""}, {"nome": "Bellucci Stefano", "tel": "331/7879958", "email": "stefano.bellucci@vava.it", "pec": ""}, {"nome": "Perego Mattia", "tel": "338/1253333", "email": "mattia.perego@vava.it", "pec": ""}, {"nome": "Puricelli Paolo", "tel": "340/6636125", "email": "paolo.puricelli@vava.it", "pec": ""}, {"nome": "Bezzi Federico", "tel": "353/4032308", "email": "federico.bezzi@vava.it", "pec": ""}], "fatturatoNum": 280000, "stato": "attivo", "lat": 45.464, "lng": 9.19}, {"cod": "", "agenzia": "Eusanio Gianfranco", "cityprov": "Aquila", "regioniRaw": "Abruzzo", "regioni": ["Abruzzo"], "mandato": "NO", "fatturato": "5K 2025", "info": "1,5K 2026 da sentire per capire", "contatti": [{"nome": "Eusanio Gianfranco", "tel": "340/3638750", "email": "gf.rappresentanze@virgilio.it", "pec": "gf.eusanio@pec.it"}, {"nome": "Gianelli Paolo", "tel": "347/4519593", "email": "paolo_gianelli@yahoo.it", "pec": "gianellipaolo@pec.it"}], "fatturatoNum": 5000, "stato": "presidiare", "lat": 42.351, "lng": 13.399}, {"cod": "", "agenzia": "VACANT", "cityprov": "Verona", "regioniRaw": "Veneto", "regioni": ["Veneto"], "mandato": "", "fatturato": "", "info": "VACANT DA CERCARE", "contatti": [], "fatturatoNum": null, "stato": "vacante", "lat": 45.438, "lng": 10.992}, {"cod": "", "agenzia": "Awine srl", "cityprov": "Roma e provincia", "regioniRaw": "Lazio", "regioni": ["Lazio"], "mandato": "SI", "fatturato": "335K 2025", "info": "da incontrare con giulio", "contatti": [{"nome": "Giorgio Polidori", "tel": "328/3641130", "email": "giopoli@inwind.it", "pec": "avvinasnc@unapec.it"}, {"nome": "Iacovacci Enrico", "tel": "366/8781807", "email": "", "pec": "avvinasnc@unapec.it"}, {"nome": "D'Andrea Alessandro", "tel": "", "email": "", "pec": "avvinasnc@unapec.it"}, {"nome": "De Grazia Luca Maria", "tel": "339/1237124", "email": "lucadgr76@libero.it", "pec": "avvinasnc@unapec.it"}, {"nome": "Guerrini Diego", "tel": "328/8859386", "email": "", "pec": "avvinasnc@unapec.it"}, {"nome": "Cordova Claudio", "tel": "347/8996879", "email": "", "pec": "avvinasnc@unapec.it"}, {"nome": "Maggiori Silvia", "tel": "338/2255149", "email": "silviamaggiori@gmail.com", "pec": "avvinasnc@unapec.it"}], "fatturatoNum": 335000, "stato": "attivo", "lat": 41.903, "lng": 12.496}, {"cod": "", "agenzia": "Keci Artur", "cityprov": "Pavia e provincia", "regioniRaw": "Lombardia", "regioni": ["Lombardia"], "mandato": "NO", "fatturato": "", "info": "da senitre per big bottle, appena partito", "contatti": [{"nome": "Keci Artur", "tel": "347/7265784", "email": "artur.keci92@gmail.com", "pec": "arturkeci@pec.it"}], "fatturatoNum": null, "stato": "presidiare", "lat": 45.185, "lng": 9.159}, {"cod": "", "agenzia": "Franco Antonio", "cityprov": "Potenza e provincia", "regioniRaw": "Basilicata", "regioni": ["Basilicata"], "mandato": "NO", "fatturato": "", "info": "Appena partito", "contatti": [{"nome": "Franco Antonio", "tel": "347/3655429", "email": "antponio65.franco@gmail.com", "pec": "antoniofrancoag2024@pec.it"}], "fatturatoNum": null, "stato": "presidiare", "lat": 40.642, "lng": 15.805}, {"cod": "", "agenzia": "Giuly srl", "cityprov": "Campobasso", "regioniRaw": "Molise", "regioni": ["Molise"], "mandato": "NO", "fatturato": "", "info": "Appena partito", "contatti": [{"nome": "Nicola Lalli", "tel": "", "email": "", "pec": ""}], "fatturatoNum": null, "stato": "presidiare", "lat": 41.563, "lng": 14.656}, {"cod": "", "agenzia": "Sante Convertini", "cityprov": "Brindisi Taranto e provincia", "regioniRaw": "Puglia", "regioni": ["Puglia"], "mandato": "NO", "fatturato": "", "info": "Da far partire subito maggio 26", "contatti": [{"nome": "Sante Convertini", "tel": "", "email": "", "pec": ""}], "fatturatoNum": null, "stato": "presidiare", "lat": 40.464, "lng": 17.247}, {"cod": "", "agenzia": "Palladino Antonio", "cityprov": "Foggia e provincia", "regioniRaw": "Puglia", "regioni": ["Puglia"], "mandato": "NO", "fatturato": "", "info": "Va sentito appena partito", "contatti": [{"nome": "Palladino Antonio", "tel": "328/4648355", "email": "agenziapalladino@gmail.com", "pec": "agenziapalladino@pec.it"}], "fatturatoNum": null, "stato": "presidiare", "lat": 41.462, "lng": 15.544}, {"cod": "", "agenzia": "VACANT", "cityprov": "Udine e friuli", "regioniRaw": "Friuli", "regioni": ["Friuli-Venezia Giulia"], "mandato": "", "fatturato": "", "info": "VACANT DA CERCARE", "contatti": [], "fatturatoNum": null, "stato": "vacante", "lat": 46.063, "lng": 13.235}];
+const eur=n=>n==null?'—':'\u20ac'+(n>=1000?(n/1000).toLocaleString('it-IT',{maximumFractionDigits:1})+'k':n);
+const norm=s=>(s||'').toLowerCase().split('/')[0].normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z]/g,'');
+const LAB={attivo:'Attivo',presidiare:'Da presidiare',vacante:'Vacante'};
+
+const byRegion={}; AGENTS.forEach(a=>a.regioni.forEach(r=>(byRegion[r]=byRegion[r]||[]).push(a)));
+const regionFt=r=>(byRegion[r]||[]).reduce((s,a)=>s+(a.fatturatoNum||0),0);
+function regStatus(r){const l=byRegion[r];if(!l||!l.length)return'scoperta';
+  return l.some(a=>a.stato==='attivo')?'attiva':'presidiare';}
+const REGSTYLE={
+  attiva:{color:'#6e1423',fillColor:'#6e1423',fillOpacity:.18},
+  presidiare:{color:'#b07d28',fillColor:'#c2872c',fillOpacity:.24},
+  scoperta:{color:'#b9b3a6',fillColor:'#8d887d',fillOpacity:.16,dashArray:'4 3'}
+};
+const MYREG={}; Object.keys(byRegion).forEach(r=>MYREG[norm(r)]=r);
+
+(function(){
+  const ft=AGENTS.reduce((s,a)=>s+(a.fatturatoNum||0),0);
+  const seg=AGENTS.filter(a=>a.stato!=='attivo').length;
+  document.getElementById('stats').innerHTML=[
+    ['Agenti',AGENTS.length],['Regioni',Object.keys(byRegion).length+'/20'],
+    ['Fatturato \u201925',eur(ft)],['Da seguire',seg]
+  ].map(([l,v])=>`<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
+})();
+
+const map=L.map('map',{zoomControl:true,scrollWheelZoom:true,tap:true}).setView([42.2,12.5],5);
+const carto=L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+  {subdomains:'abcd',maxZoom:19,attribution:'&copy; OpenStreetMap, &copy; CARTO'}).addTo(map);
+const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {maxZoom:19,attribution:'Tiles &copy; Esri'});
+const osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'});
+const baseLayers={'Cartina':carto,'Satellite':sat,'Stradale (OSM)':osm};
+
+function popHtml(a){
+  let c='';
+  if(a.contatti&&a.contatti.length){
+    c='<div class="contacts">'+a.contatti.map(ct=>{
+      const tel=ct.tel?`<a class="tel" href="tel:${ct.tel.replace(/[^\d+]/g,'')}"><span class="ico">\u260e</span>${ct.tel}</a>`:'';
+      const em=(ct.email||'').split(/[;\s]+/).filter(e=>e.includes('@'))
+        .map(e=>`<a href="mailto:${e}"><span class="ico">\u2709</span>${e}</a>`).join('');
+      if(!ct.nome&&!tel&&!em)return'';
+      return `<div class="ct"><div class="cn">${ct.nome||'—'}</div><div class="ln">${tel}${em}</div></div>`;
+    }).join('')+'</div>';
+  }
+  return `<div class="pop"><div class="ag">${a.agenzia}</div>
+    <div class="zone">${a.cityprov||''}${a.cod?' · cod. '+a.cod:''}</div>
+    <span class="pill ${a.stato}">${LAB[a.stato]}</span>
+    <div class="ft">Fatturato 2025 · <b>${eur(a.fatturatoNum)}</b>${a.fatturato&&a.fatturatoNum==null?' ('+a.fatturato+')':''} · Mandato <b>${a.mandato||'—'}</b></div>
+    ${a.info?`<div class="note">${a.info.trim()}</div>`:''}${c}</div>`;
+}
+const icon=st=>L.divIcon({className:'',html:`<div class="pin ${st}"><div class="b"></div></div>`,
+  iconSize:[24,24],iconAnchor:[12,23],popupAnchor:[0,-21]});
+
+map.createPane('regions').style.zIndex=350;
+const lp=map.createPane('labels'); lp.style.zIndex=360; lp.style.pointerEvents='none';
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',6500);}
+
+const GEO=[
+ 'https://raw.githubusercontent.com/openpolis/geojson-italy/master/topojson/limits_IT_regions.topo.json',
+ 'https://cdn.jsdelivr.net/gh/openpolis/geojson-italy@master/topojson/limits_IT_regions.topo.json',
+ 'https://cdn.statically.io/gh/openpolis/geojson-italy/master/topojson/limits_IT_regions.topo.json'
+];
+async function getGeo(){for(const u of GEO){try{const r=await fetch(u);if(r.ok)return await r.json();}catch(e){}}return null;}
+
+let regionLayer=null;
+getGeo().then(topo=>{
+  if(topo){
+    const obj=topo.objects[Object.keys(topo.objects)[0]];
+    regionLayer=L.geoJSON(topojson.feature(topo,obj),{pane:'regions',
+      style:f=>{const my=MYREG[norm(f.properties.reg_name)];const st=my?regStatus(my):'scoperta';
+        return Object.assign({weight:1.4},REGSTYLE[st]);},
+      onEachFeature:(f,layer)=>{
+        const name=f.properties.reg_name,my=MYREG[norm(name)],list=my?byRegion[my]:[];
+        layer.on('mouseover',()=>layer.setStyle({weight:2.6,fillOpacity:Math.min(.5,(layer.options.fillOpacity||.2)+.15)}));
+        layer.on('mouseout',()=>regionLayer.resetStyle(layer));
+        layer.bindTooltip(`<b>${name}</b><br>${list.length?list.length+' agenti · '+eur(regionFt(my)):'Zona scoperta'}`,{sticky:true});
+        const c=layer.getBounds().getCenter();
+        L.marker(c,{pane:'labels',interactive:false,icon:L.divIcon({className:'',
+          html:`<div class="reglabel">${name.split('/')[0]}</div>`,iconSize:[110,16],iconAnchor:[55,8]})}).addTo(map);
+      }}).addTo(map);
+  } else toast('Confini non caricati (rete bloccata): solo puntatori.');
+  addMarkers();
+}).catch(()=>{toast('Confini non caricati: solo puntatori.');addMarkers();});
+
+const markers={};
+function addMarkers(){
+  AGENTS.forEach((a,i)=>{
+    const m=L.marker([a.lat,a.lng],{icon:icon(a.stato),riseOnHover:true,zIndexOffset:1000})
+      .addTo(map).bindPopup(popHtml(a),{maxWidth:290});
+    m.bindTooltip(a.agenzia,{direction:'top',offset:[0,-20]});
+    markers[i]=m;
+  });
+  L.control.layers(baseLayers,regionLayer?{'Confini regioni':regionLayer}:null,{position:'topright'}).addTo(map);
+}
+
+// sidebar
+const aside=document.getElementById('aside'),backdrop=document.getElementById('backdrop');
+function openAside(o){aside.classList.toggle('open',o);backdrop.style.display=o?'block':'none';}
+document.getElementById('menubtn').onclick=()=>openAside(true);
+document.getElementById('closeaside').onclick=()=>openAside(false);
+backdrop.onclick=()=>openAside(false);
+
+const agentlist=document.getElementById('agentlist');
+function render(filter){
+  const f=norm(filter),groups={};
+  AGENTS.forEach((a,i)=>{
+    const hay=norm(a.agenzia+' '+a.cityprov+' '+a.regioniRaw+' '+(a.contatti||[]).map(c=>c.nome).join(' '));
+    if(f&&!hay.includes(f))return;
+    a.regioni.forEach(r=>(groups[r]=groups[r]||[]).push(i));
+  });
+  const order=Object.keys(groups).sort((a,b)=>regionFt(b)-regionFt(a));
+  agentlist.innerHTML=order.length?order.map(r=>{
+    const items=groups[r].sort((x,y)=>(AGENTS[y].fatturatoNum||0)-(AGENTS[x].fatturatoNum||0));
+    return `<div class="reghead">${r}<em>${eur(regionFt(r))}</em></div>`+items.map(i=>{
+      const a=AGENTS[i];
+      return `<div class="agent" data-i="${i}"><span class="dot ${a.stato}"></span>
+        <span class="nm">${a.agenzia}</span><span class="ft">${eur(a.fatturatoNum)}</span></div>`;
+    }).join('');
+  }).join(''):'<div style="text-align:center;color:var(--ink-soft);margin-top:24px;font-size:13px">Nessun risultato.</div>';
+  agentlist.querySelectorAll('.agent').forEach(el=>{
+    el.addEventListener('click',()=>{
+      agentlist.querySelectorAll('.agent').forEach(e=>e.classList.remove('active'));
+      el.classList.add('active');
+      const i=+el.dataset.i,a=AGENTS[i];
+      openAside(false);
+      map.flyTo([a.lat,a.lng],8,{duration:.6});
+      setTimeout(()=>markers[i]&&markers[i].openPopup(),700);
+    });
+  });
+}
+document.getElementById('q').addEventListener('input',e=>render(e.target.value));
+render('');
+
+// keep map sized correctly on mobile (rotation, address-bar resize)
+function fix(){setTimeout(()=>map.invalidateSize(),150);}
+window.addEventListener('resize',fix);
+window.addEventListener('orientationchange',fix);
+fix();
+</script>
+</body>
+</html>
