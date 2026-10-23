@@ -22,12 +22,13 @@ La cartella `kit/` in chiaro non va mai committata.
 ## Formato di un report (kit/reports.json)
 ```json
 {"agente": "Nome agenzia come in mappa", "data": "2026-10-11", "tipo": "affiancamento",
- "motivo": "...", "sintesi": "...", "rating": 4,
+ "referente": "Nome della persona", "motivo": "...", "sintesi": "...", "rating": 4,
  "clienti": [{"nome": "Nome cliente", "esito": "nuovo"}],
  "azioni": [{"testo": "...", "entro": "2026-11-15", "stato": "aperta"}]}
 ```
 - `agente`: nome esatto dell'agenzia come in mappa.
 - `tipo`: visita, affiancamento, telefonata, riunione, evento.
-- `rating`: da 1 a 5 calici, deciso da Simone.
+- `referente`: persona dell'agenzia con cui si è fatta la visita, scritta come nei contatti della scheda. Per le agenzie di una sola persona si compila da sola.
+- `rating`: da 1 a 5 calici, deciso da Simone, riferito al referente. Il rating dell'agenzia è la media degli ultimi voti dei suoi referenti.
 - `esito` cliente: nuovo, riordino, da ricontattare, oppure testo libero.
 - `stato` azione: aperta o fatto.
